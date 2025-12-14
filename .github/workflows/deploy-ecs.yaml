@@ -41,7 +41,7 @@ jobs:
           docker tag frontend:latest 012473847386.dkr.ecr.ap-southeast-2.amazonaws.com/aws-community-frontend:latest
           docker push 012473847386.dkr.ecr.ap-southeast-2.amazonaws.com/aws-community-frontend:latest
 
-      # 6. Deploy to ECS
+      # 6. Deploy to ECS !
       - name: Deploy to ECS
         run: |
           aws ecs update-service \
