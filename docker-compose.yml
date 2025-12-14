@@ -11,3 +11,5 @@ services:
       - "3000:80"
     environment:
       - VITE_API_URL=http://localhost:5000
+
+#FOR LOCAL WORKING
