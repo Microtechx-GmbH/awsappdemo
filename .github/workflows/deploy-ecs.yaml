@@ -1,0 +1,90 @@
+name: Deploy Fullstack App to AWS ECS
+
+on:
+  push:
+    branches:
+      - abc  # Trigger deployment on push to main branch
+
+jobs:
+  build-and-deploy:
+    name: Build Docker Images & Deploy to ECS
+    runs-on: ubuntu-latest
+
+    steps:
+      # Step 1: Checkout repository
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      # Step 2: Configure AWS Credentials
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      # Step 3: Login to ECR
+      - name: Login to Amazon ECR
+        run: |
+          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | \
+          docker login --username AWS --password-stdin ${{ secrets.ECR_BACKEND_REPO }}
+          aws ecr get-login-password --region ${{ secrets.AWS_REGION }} | \
+          docker login --username AWS --password-stdin ${{ secrets.ECR_FRONTEND_REPO }}
+
+      # Step 4: Build & Push Backend Docker Image
+      - name: Build and Push Backend Image
+        run: |
+          docker build -t backend ./backend
+          docker tag backend:latest ${{ secrets.ECR_BACKEND_REPO }}:latest
+          docker push ${{ secrets.ECR_BACKEND_REPO }}:latest
+
+      # Step 5: Build & Push Frontend Docker Image
+      - name: Build and Push Frontend Image
+        run: |
+          docker build -t frontend ./frontend
+          docker tag frontend:latest ${{ secrets.ECR_FRONTEND_REPO }}:latest
+          docker push ${{ secrets.ECR_FRONTEND_REPO }}:latest
+
+      # Step 6: Register ECS Task Definition
+      - name: Register ECS Task Definition
+        run: |
+          TASK_DEF=$(aws ecs describe-task-definition --task-definition ${{ secrets.TASK_DEFINITION_NAME }} || echo "{}")
+          if [[ "$TASK_DEF" == "{}" ]]; then
+            # If task does not exist, create new JSON definition
+            cat > taskdef.json <<EOF
+{
+  "family": "${{ secrets.TASK_DEFINITION_NAME }}",
+  "networkMode": "awsvpc",
+  "containerDefinitions": [
+    {
+      "name": "backend",
+      "image": "${{ secrets.ECR_BACKEND_REPO }}:latest",
+      "essential": true,
+      "portMappings": [{"containerPort": 5000}]
+    },
+    {
+      "name": "frontend",
+      "image": "${{ secrets.ECR_FRONTEND_REPO }}:latest",
+      "essential": true,
+      "portMappings": [{"containerPort": 80}]
+    }
+  ],
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024"
+}
+EOF
+   else
+   echo "Task Definition exists, updating..."
+            # You can add update logic here if needed
+          fi
+
+          aws ecs register-task-definition --cli-input-json file://taskdef.json
+
+      # Step 7: Update ECS Service
+      - name: Update ECS Service
+        run: |
+          aws ecs update-service \
+            --cluster ${{ secrets.CLUSTER_NAME }} \
+            --service ${{ secrets.SERVICE_NAME }} \
+            --task-definition ${{ secrets.TASK_DEFINITION_NAME }}
