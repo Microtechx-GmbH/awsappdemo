@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
+import architectureImg from "./assets/Architectural.png";
 
 export default function App() {
   const [message, setMessage] = useState("Loading gratitude... 💙");
@@ -17,6 +18,21 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-indigo-100 via-sky-100 to-purple-100 flex items-center justify-center p-6">
+      {/* Architecture Diagram */}
+      <div className="mt-10">
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">
+          Live Architecture – Code to Cloud
+        </h2>
+
+        <img
+          src={architectureImg}
+          alt="AWS Architecture Diagram"
+          className="w-full rounded-2xl shadow-xl border"
+        />
+      </div>
+
+
+
       <div className="max-w-4xl w-full">
         <div className="bg-white/90 backdrop-blur-xl rounded-3xl shadow-2xl p-10 md:p-14 text-center animate-fadeIn">
 
